@@ -1,0 +1,12 @@
+panflute
+pandocfilters
+pandoc-include
+pandoc-latex-admonition
+pandoc-latex-environment
+pandoc-latex-barcode
+pandoc-latex-levelup
+pandoc-mustache
+pandoc-dalibo-guidelines
+pypdf2
+pandoc-minted
+pygments
