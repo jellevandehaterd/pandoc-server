@@ -4,7 +4,7 @@ A WSGI service that allow you to create pdf from markdown
 
 # Installation
 
-```
+```bash
 docker build .
 ```
 
@@ -12,7 +12,7 @@ docker build .
 
 Launch:
 
-```
+```bash
 docker run -it -p 8080:8080 ${container-id}
 ```
 
