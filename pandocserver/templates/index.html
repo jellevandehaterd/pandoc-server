@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Pandoc converter</title>
+
+    <link rel="icon" href="{{ url('static', filename='images/favicon.ico') }}">
+
+    <link rel="stylesheet"
+          href="{{ url('static', filename='index.css') }}">
+</head>
+<body>
+<div id="drag-and-drop" data-post-url="{{ url('convert')}}"></div>
+<script type="module">
+    import '{{ url("static", filename="index.js") }}';
+</script>
+</body>
+</html>

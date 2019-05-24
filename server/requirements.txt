@@ -1,12 +1,5 @@
-panflute
-pandocfilters
-pandoc-include
-pandoc-latex-admonition
-pandoc-latex-environment
-pandoc-latex-barcode
-pandoc-latex-levelup
-pandoc-mustache
-pandoc-dalibo-guidelines
-pypdf2
-pandoc-minted
-pygments
+aiodns==2.0.0
+aiohttp==3.5.4
+cchardet==2.1.4
+Click==7.0
+pypandoc=1.4
