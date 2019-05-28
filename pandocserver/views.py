@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import mimetypes
+import re
 from functools import partial
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -11,6 +12,8 @@ import aiohttp_jinja2
 from aiohttp import web
 from multidict import CIMultiDict
 
+
+from .services import PANDOC_SERVICE_FORMATS
 from .worker import convert, DEFAULT_TEMP_DIR
 from .utils import Config, clean_up_tempfile
 
@@ -28,33 +31,46 @@ class SiteHandler:
         return {}
 
     async def convert(self, request: web.Request) -> web.StreamResponse:
-        data = await request.post()
+        reader = await request.multipart()
 
-        input_filename = Path(data['file'].filename).stem
-        ext = Path(data['file'].filename).suffix
+        field = await reader.next()
+        assert field.name == 'from'
+        from_format = str(await field.read(), 'utf-8')
 
-        from_format = 'markdown'
-        to_format = 'pdf'
+        field = await reader.next()
+        assert field.name == 'to'
+        to_format = str(await field.read(), 'utf-8')
+
+        field = await reader.next()
+        assert field.name == 'file'
+        filename = field.filename
+
+        ext = "".join(Path(filename).suffixes)
+        input_filename = re.sub(f"{ext}$", "", filename)
+
+        assert from_format in PANDOC_SERVICE_FORMATS
+        assert to_format in PANDOC_SERVICE_FORMATS
 
         r = self._loop.run_in_executor
         executor = request.app['executor']
         try:
             with (await r(
                     None,
-                    partial(NamedTemporaryFile, suffix=f'{ext}', dir=DEFAULT_TEMP_DIR)
-            )) as fobj, \
-                    (await r(
-                        None,
-                        partial(NamedTemporaryFile, mode='w', suffix=f'.{to_format}', dir=DEFAULT_TEMP_DIR, delete=False)
-                    )) as fobj_out:
+                    partial(NamedTemporaryFile, mode='wb', suffix=f'{ext}', dir=DEFAULT_TEMP_DIR)
+            )) as fobj:
+                size = 0
+                while True:
+                    chunk = await field.read_chunk()  # 8192 bytes by default.
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    fobj.write(chunk)
+                fobj.seek(0)
 
-                fobj.write(data['file'].file.read())
-
-                logger.info(f"Created input file: '{fobj.name}'")
+                logger.info(f"Created input file '{fobj.name}' sized '{size}'")
 
                 try:
-                    to_format = 'latex' if to_format == 'pdf' else to_format
-                    out = await r(executor, convert, fobj.name, fobj_out.name, from_format, to_format)
+                    fobj_out = await r(executor, convert, input_filename, fobj.name, from_format, to_format)
                     logger.info(f"Conversion successful, created file: '{fobj_out.name}'")
                 except RuntimeError as e:
                     logger.error(f"{e}")
@@ -63,16 +79,17 @@ class SiteHandler:
                     logger.error(f"{e}")
                     raise
 
-                content_type, _ = mimetypes.guess_type(fobj_out.name)
-                disposition = f'filename="{input_filename}{Path(fobj_out.name).suffix}"'
+                content_type, _ = mimetypes.guess_type(str(fobj_out.resolve()))
+                disposition = f'filename="{fobj_out.name}"'
 
                 if 'text' not in content_type:
                     disposition = 'attachment; ' + disposition
 
                 headers = {
                     'Access-Control-Expose-Headers': 'Content-Disposition',
-                    'Content-Disposition': disposition
+                    'Content-Disposition': disposition,
+                    'Content-Transfer-Encoding': 'binary'
                 }
-                return web.FileResponse(path=fobj_out.name, headers=CIMultiDict(headers))
+                return web.FileResponse(path=str(fobj_out.resolve()), headers=CIMultiDict(headers))
         finally:
-            self._loop.call_later(30, clean_up_tempfile, fobj_out.name)
+            self._loop.call_later(30, clean_up_tempfile, str(fobj_out.resolve()))

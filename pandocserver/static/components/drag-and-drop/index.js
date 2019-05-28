@@ -6,10 +6,89 @@ export default class DragAndDrop {
   render() {
     this.el.innerHTML = `
       <div id="drop-area">
-        <form class="my-form">
+        <form class="my-form" enctype="multipart/form-data" accept-charset="UTF-8">
+          <div><p>Convert</p>
+          <label for="fromElem">from</label>
+          <select id="fromElem">
+            <option value="commonmark">CommonMark</option>
+            <option value="creole">Creole</option>
+            <option value="docbook">DocBook</option>
+            <option value="dokuwiki">DokuWiki</option>
+            <option value="fb2">FB2</option>
+            <option value="haddock">Haddock markup</option>
+            <option value="html">HTML</option>
+            <option value="jats">JATS</option>
+            <option value="ipynb">Jupyter Notebook (ipynb)</option>
+            <option value="latex">LaTeX</option>
+            <option value="man">Man</option>
+            <option value="markdown" selected>Markdown (pandoc)</option>
+            <option value="gfm">Markdown (GitHub-flavored)</option>
+            <option value="markdown_phpextra">Markdown (PHP Markdown Extra)</option>
+            <option value="markdown_strict">Markdown (strict)</option>
+            <option value="mediawiki">MediaWiki</option>
+            <option value="markdown_mmd">MultiMarkdown</option>
+            <option value="muse">Muse</option>
+            <option value="native">Native (Pandoc AST)</option>
+            <option value="opml">OPML</option>
+            <option value="org">Org Mode</option>
+            <option value="rst">reStructuredText</option>
+            <option value="t2t">Txt2Tags</option>
+            <option value="textile">Textile</option>
+            <option value="tikiwiki">TikiWiki</option>
+            <option value="twiki">TWiki</option>
+            <option value="vimwiki">Vimwiki</option>
+          </select>
+          </div>
+          <div>
+          <label for="toElem">to</label>
+          <select id="toElem">
+            <option value="S5">S5</option>
+            <option value="asciidoc">AsciiDoc (original)</option>
+            <option value="asciidoctor">AsciiDoc (asciidoctor-flavored)</option>
+            <option value="beamer">LaTeX Beamer</option>
+            <option value="commonmark">CommonMark</option>
+            <option value="context">ConTeXt</option>
+            <option value="docbook4">DocBook v4</option>
+            <option value="docbook5">DocBook v5</option>
+            <option value="dokuwiki">DokuWiki</option>
+            <option value="dzslides">DZSlides</option>
+            <option value="haddock">Haddock markup</option>
+            <option value="html4">HTML 4</option>
+            <option value="html5">HTML 5</option>
+            <option value="icml">ICML</option>
+            <option value="jats">JATS</option>
+            <option value="json">JSON</option>
+            <option value="ipynb">Jupyter Notebook (ipynb)</option>
+            <option value="latex">LaTeX</option>
+            <option value="man">Man</option>
+            <option value="ms">Ms</option>
+            <option value="markdown" selected>Markdown (pandoc)</option>
+            <option value="gfm">Markdown (GitHub-flavored)</option>
+            <option value="markdown_phpextra">Markdown (PHP Markdown Extra)</option>
+            <option value="markdown_strict">Markdown (strict)</option>
+            <option value="mediawiki">MediaWiki</option>
+            <option value="markdown_mmd">MultiMarkdown</option>
+            <option value="muse">Muse</option>
+            <option value="native">Native (Pandoc AST)</option>
+            <option value="opendocument">OpenDocument</option>
+            <option value="opml">OPML</option>
+            <option value="org">Org Mode</option>
+            <option value="pdf" selected>PDF</option>
+            <option value="plain">Plain text</option>
+            <option value="revealjs">reveal.js</option>
+            <option value="rst">reStructuredText</option>
+            <option value="rtf">RTF</option>
+            <option value="slideous">Slideous</option>
+            <option value="slidy">Slidy</option>
+            <option value="tei">TEI</option>
+            <option value="texinfo">Texinfo</option>
+            <option value="textile">Textile</option>
+            <option value="zimwiki">ZimWiki</option>
+          </select>
+          </div>
           <p>Upload multiple image or other files with the file dialog or by dragging and dropping images on the dashed line</p>
           <input type="file" id="fileElem" multiple accept="file_extension">
-          <label class="button" for="fileElem">Add more files</label>
+          <label class="button" for="fileElem">Add more files</label>  
         </form>
         <progress id="progress-bar" max="100" value="10"></progress>
         <div id="gallery"></div>
@@ -21,6 +100,8 @@ export default class DragAndDrop {
     const dropArea = this.el.querySelector("#drop-area");
     const progressBar = this.el.querySelector("#progress-bar");
     const fileElem = this.el.querySelector("#fileElem");
+    const fromElem = this.el.querySelector("#fromElem");
+    const toElem = this.el.querySelector("#toElem");
     const gallery = this.el.querySelector("#gallery");
     const postUrl = this.el.dataset.postUrl;
     let uploadProgress = [];
@@ -245,10 +326,15 @@ export default class DragAndDrop {
       let url = postUrl;
       let formData = new FormData();
       let fileName = 'download';
+      formData.append("from",fromElem.value);
+      formData.append("to",toElem.value);
       formData.append("file", file);
       fetch(url, {
         method: "POST",
-        body: formData
+        body: formData,
+        headers: {
+          "Content-Encoding": "UTF-8"
+        }
       }).then((response) => {
           updateProgress(i, 100);
           if(response.ok) {
