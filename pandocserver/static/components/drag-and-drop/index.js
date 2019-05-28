@@ -7,9 +7,9 @@ export default class DragAndDrop {
     this.el.innerHTML = `
       <div id="drop-area">
         <form class="my-form" enctype="multipart/form-data" accept-charset="UTF-8">
-          <div><p>Convert</p>
+          <div><h1>Convert</h1>
           <label for="fromElem">from</label>
-          <select id="fromElem">
+          <select class="select-css" id="fromElem">
             <option value="commonmark">CommonMark</option>
             <option value="creole">Creole</option>
             <option value="docbook">DocBook</option>
@@ -41,7 +41,7 @@ export default class DragAndDrop {
           </div>
           <div>
           <label for="toElem">to</label>
-          <select id="toElem">
+          <select class="select-css" id="toElem">
             <option value="S5">S5</option>
             <option value="asciidoc">AsciiDoc (original)</option>
             <option value="asciidoctor">AsciiDoc (asciidoctor-flavored)</option>
