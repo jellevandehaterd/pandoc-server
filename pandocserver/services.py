@@ -130,20 +130,17 @@ class PandocService(object):
 
     def _extra_args(self, **kwargs):
         self.extra_args = []
-        if 'template_path' in kwargs and kwargs['template_path'] is not None:
-            self.template(kwargs['template_path'])
 
         if 'extra_args' in kwargs:
-            for k, v in kwargs['extra_args'].items():
+            for k, v in kwargs.pop('extra_args').items():
                 if v is not None:
                     self.add_argument(f"{k}={v}")
 
-    def template(self, template_path):
-        p = Path(template_path)
-        if not p.exists():
-            raise IOError(f"Template file not found: {template_path}")
-        self.add_argument(f"template={p.resolve()}")
-
+        for arg, value in kwargs.items():
+            if type(value) == bool and value is True:
+                self.add_argument(f"{arg}")
+            elif type(value) != bool:
+                self.add_argument(f"{arg}={value}")
 
     @classmethod
     def _register_formats(cls) -> None:
@@ -197,5 +194,5 @@ class PandocService(object):
         return pypandoc
 
     def add_argument(self, arg) -> list:
-        self.extra_args.append(f"--{arg}")
+        self.extra_args.append(f"--{arg.replace('_', '-')}")
         return self.extra_args

@@ -8,6 +8,7 @@ import logging
 
 import jinja2
 
+from pandocserver.middlewares import init_middlewares
 from .routes import init_routes
 from .utils import init_config, Config, init_workers, TrafaretYaml, CONFIG_TRAFARET
 from .views import SiteHandler
@@ -19,7 +20,7 @@ logging.basicConfig(format=LOGGER_FORMAT, datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger('asyncio')
 
 MAJOR_VERSION = 0
-MINOR_VERSION = 1
+MINOR_VERSION = 9
 PATCH_VERSION = '0.rc1'
 __short_version__ = '{}.{}'.format(MAJOR_VERSION, MINOR_VERSION)
 __version__ = '{}.{}'.format(__short_version__, PATCH_VERSION)
@@ -41,6 +42,7 @@ async def init_app(conf: Config) -> web.Application:
     init_jinja2(app)
     handler = SiteHandler(conf, executor)
     init_routes(app, handler)
+    init_middlewares(app)
     return app
 
 @click.group()

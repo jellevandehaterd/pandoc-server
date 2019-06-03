@@ -53,6 +53,7 @@ class SiteHandler:
 
         r = self._loop.run_in_executor
         executor = request.app['executor']
+        fobj_out = None
         try:
             with (await r(
                     None,
@@ -72,10 +73,7 @@ class SiteHandler:
                 try:
                     fobj_out = await r(executor, convert, input_filename, fobj.name, from_format, to_format)
                     logger.info(f"Conversion successful, created file: '{fobj_out.name}'")
-                except RuntimeError as e:
-                    logger.error(f"{e}")
-                    raise
-                except TypeError as e:
+                except (RuntimeError, TypeError) as e:
                     logger.error(f"{e}")
                     raise
 
@@ -90,6 +88,10 @@ class SiteHandler:
                     'Content-Disposition': disposition,
                     'Content-Transfer-Encoding': 'binary'
                 }
-                return web.FileResponse(path=str(fobj_out.resolve()), headers=CIMultiDict(headers))
+        except Exception as err:
+            return web.Response(text=str(err), status=500)
+        else:
+            return web.FileResponse(path=str(fobj_out.resolve()), headers=CIMultiDict(headers))
         finally:
-            self._loop.call_later(30, clean_up_tempfile, str(fobj_out.resolve()))
+            if fobj_out is not None:
+                self._loop.call_later(30, clean_up_tempfile, str(fobj_out.resolve()))

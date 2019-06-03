@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Not Found{% endblock %}
+{% block content %}
+<div id="drop-area"><p>500 ERROR <br/>{{error | default('something went wrong')}}</p></div>
+{% endblock %}

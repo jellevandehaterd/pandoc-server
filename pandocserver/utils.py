@@ -26,10 +26,10 @@ CONFIG_TRAFARET = t.Dict({
         t.Key('max_workers'): t.Int[1:1024]
     }),
     t.Key('document'): t.Dict({
-        t.Key('bibliography_path', optional=True): t.String,
-        t.Key('citation_abbreviations_path', optional=True): t.String,
-        t.Key('csl_path', optional=True): t.String,
-        t.Key('template_path', optional=True): t.String,
+        t.Key('log', optional=True): t.String,
+        t.Key('verbose', optional=True): t.Bool,
+        t.Key('quiet', optional=True): t.Bool,
+        t.Key('fail_if_warnings', optional=True): t.Bool,
         t.Key('extra_args', optional=True): t.Dict({}).allow_extra('*')
     }),
 })
@@ -68,10 +68,10 @@ class WorkersConfig:
 
 @dataclass(frozen=True)
 class DocumentConfig:
-    template_path: str = None
-    csl_path: str = None
-    bibliography_path: str = None
-    citation_abbreviations_path: str = None
+    log: str = None
+    verbose: bool = None
+    quiet: bool = None
+    fail_if_warnings: bool = None
     extra_args: dict = field(default_factory=dict)
 
 

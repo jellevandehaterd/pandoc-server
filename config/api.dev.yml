@@ -7,6 +7,10 @@ workers:
 
 
 document:
-#  template_path: ../tests/templates/simple.tex
+  log: /dev/stdout
+  verbose: true
+  quiet: false
+  fail_if_warnings: false
   extra_args:
+    template: tests/templates/simple.tex
     pdf-engine: /Library/TeX/texbin/pdflatex
