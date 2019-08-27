@@ -23,7 +23,7 @@ def read_version():
             raise RuntimeError(msg)
 
 
-install_requires = ['aiohttp', 'aiodns', 'cchardet', 'Click', 'trafaret_config', 'pypandoc']
+install_requires = ['aiohttp', 'aiohttp_jinja2', 'aiodns', 'cchardet', 'Click', 'trafaret_config', 'pypandoc']
 
 
 setup(
@@ -32,7 +32,10 @@ setup(
     description='pandocserver',
     platforms=['POSIX'],
     packages=find_packages(),
-    package_data={'': ['config/*.*']},
+    package_data={
+        '': ['config/*.*'],
+        'templates': ['*.html']
+    },
     include_package_data=True,
     install_requires=install_requires,
     zip_safe=False,

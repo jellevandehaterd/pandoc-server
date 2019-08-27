@@ -12,5 +12,6 @@ document:
   quiet: false
   fail_if_warnings: false
   extra_args:
-    template: tests/templates/simple.tex
-    pdf-engine: /Library/TeX/texbin/pdflatex
+    template: eisvogel
+    pdf_engine: xelatex
+    strip_comments: true

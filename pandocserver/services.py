@@ -131,16 +131,21 @@ class PandocService(object):
     def _extra_args(self, **kwargs):
         self.extra_args = []
 
+        def parse_arg(arg, value):
+            argument = None
+            if type(value) == bool and value is True:
+                argument = f"{arg}"
+            elif type(value) != bool:
+                argument = f"{arg}={value}"
+            if argument is not None:
+                self.add_argument(argument)
+
         if 'extra_args' in kwargs:
             for k, v in kwargs.pop('extra_args').items():
-                if v is not None:
-                    self.add_argument(f"{k}={v}")
+                parse_arg(k, v)
 
-        for arg, value in kwargs.items():
-            if type(value) == bool and value is True:
-                self.add_argument(f"{arg}")
-            elif type(value) != bool:
-                self.add_argument(f"{arg}={value}")
+        for k, v in kwargs.items():
+            parse_arg(k, v)
 
     @classmethod
     def _register_formats(cls) -> None:
@@ -160,8 +165,6 @@ class PandocService(object):
     def _output(self, to_format, **kwargs) -> Union[str, pathlib.Path]:
         if to_format not in PANDOC_SERVICE_OUTPUT_FORMATS:
             raise AttributeError(f"Not a valid output format: '{to_format}'")
-
-        self.add_argument('standalone')
 
         to_format = 'latex' if to_format == 'pdf' else to_format
 
@@ -185,6 +188,7 @@ class PandocService(object):
     @out_file.setter
     def out_file(self, filepath: Union[str, pathlib.Path]) -> None:
         if filepath.parent.is_dir():
+            self.add_argument('standalone')
             self._out_file = filepath
         else:
             raise OSError(f"Not a valid output dir: {filepath.parent.resolve()}")

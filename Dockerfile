@@ -84,7 +84,7 @@ RUN mkdir -p ~/.ssh && \
 #
 # However, once warmed with make warm-cache, it can save a lots of bandwidth.
 #
-ADD cache/ ./cache
+ADD cache ./cache
 
 #
 # Install pandoc from upstream. Debian package is too old.

@@ -1,0 +1,3 @@
+include README.md
+recursive-include pandocserver/templates *.html
+recursive-include pandocserver/static *.js *.css *.png

@@ -61,39 +61,39 @@ def convert(filename:  str,
     assert type(in_file) is str
 
     in_file = Path(in_file)
-
+    out_file = None
     converted_files = 0
     try:
         archive = extract_archive(in_file)
+        archive_ext = "".join(archive.suffixes)
+        archive_stem = re.sub(f"{archive_ext}$", "", archive.name)
 
-        archive_out = Path(str(archive.parent.resolve() / filename) + '_converted')
-        archive_out.mkdir(mode=0o700)
+        out_dir = Path(str(archive.parent.resolve() / archive_stem / filename) + '_converted')
+        out_dir.mkdir(mode=0o700)
         for filepath in sorted(archive.glob("*/*.*")):
             if filepath.is_dir():
                 continue
             ext = "".join(filepath.suffixes)
             stem = re.sub(f"{ext}$", "", filepath.name)
-            service.out_file = Path(str(archive_out.resolve()) + f"/{stem}.{to_format}")
+            out_file = Path(str(out_dir.resolve()) + f"/{stem}.{to_format}")
+            service.out_file = out_file
             setattr(service, from_format, str(filepath.resolve()))
             getattr(service, to_format)
-            logger.debug(f"Created output file: {service.out_file.resolve()}")
+            logger.info(f"Created output file: {service.out_file.resolve()}")
             converted_files += 1
 
-        out_file = create_archive(archive_out, compression=in_file.suffixes[-1])
+        out_file = create_archive(out_dir, compression=in_file.suffixes[-1])
+        shutil.rmtree(out_dir.resolve(), ignore_errors=True)
     except NotAnArchiveError:
-        logger.info("Not an archive format, treating it as a file")
+        logger.debug("Not an archive format, treating it as a file")
         out_file = Path(str(in_file.parent.resolve()) + f"/{filename}.{to_format}")
-        with out_file.open(mode='wb+'):
-            service.out_file = out_file
-            setattr(service, from_format, str(in_file))
-            getattr(service, to_format)
-            converted_files += 1
+        service.out_file = out_file
+        setattr(service, from_format, str(in_file))
+        getattr(service, to_format)
+        converted_files += 1
 
         logger.info(f"Converted document from '{from_format}' to '{to_format}'")
-    except (ExtractArchiveError, AttributeError, RuntimeError, OSError) as err:
-        logger.info(f"Conversion error: {err}")
-        raise
-    except CreateArchiveError:
+    except (CreateArchiveError, ExtractArchiveError, AttributeError, RuntimeError, OSError) as err:
         raise
     else:
         logger.info(f"Converted {converted_files} document(s) from '{from_format}' to '{to_format}'")

@@ -1,0 +1,12 @@
+pygments
+panflute
+pypdf2
+pandocfilters
+#pandoc-include does a check hard if pandoc is installed... blocks multistage build
+pandoc-latex-admonition
+pandoc-latex-environment
+pandoc-latex-barcode
+pandoc-latex-levelup
+pandoc-mustache
+pandoc-dalibo-guidelines
+pandoc-minted
