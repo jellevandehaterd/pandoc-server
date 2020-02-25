@@ -11,8 +11,8 @@ build:
 
 run:
 	@echo ""
-	docker run -it --rm -v $(shell pwd)/config:/config --init -p 8080:8080 -e PANDOC_SERVER_CONFIG=/config/api.dev.yml pandoc-server run -vvv
+	docker run -it --rm -v $(shell pwd)/config:/config --init -p 8080:8080 -e PANDOC_SERVER_CONFIG=/config/api.dev.yml ${IMAGE_NAME}:${VERSION} run -vvv
 
 run.background:
 	@echo ""
-	docker run -it -d --name ${IMAGE_NAME} -v $(shell pwd)/config:/config --init -p 8080:8080 -e PANDOC_SERVER_CONFIG=/config/api.dev.yml pandoc-server run -vvv
+	docker run -it -d --name ${IMAGE_NAME} -v $(shell pwd)/config:/config --init -p 8080:8080 -e PANDOC_SERVER_CONFIG=/config/api.dev.yml ${IMAGE_NAME}:${VERSION} run -vvv
