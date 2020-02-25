@@ -1,6 +1,6 @@
 VERSION = 2.7.3
 REGISTRY = andromeda.docker.ing.net
-DFILE := Dockerfile.alpine
+DFILE := Dockerfile
 IMAGE_NAME = pandoc-server
 
 build:
