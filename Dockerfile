@@ -1,82 +1,5 @@
-# A simple Pandoc machine for pandoc with filters, fonts and the latex bazaar
-#
-# Based on :
-#    https://github.com/jagregory/pandoc-docker/blob/master/Dockerfile
-#    https://github.com/geometalab/docker-pandoc/blob/develop/Dockerfile
-#    https://github.com/vpetersson/docker-pandoc/blob/master/Dockerfile
-
-FROM debian:stretch-slim
-
-# Proxy to APT cacher: e.g. http://apt-cacher-ng.docker:3142
-ARG APT_CACHER
-
-# Set the env variables to non-interactive
-ENV DEBIAN_FRONTEND noninteractive
-ENV DEBIAN_PRIORITY critical
-ENV DEBCONF_NOWARNINGS yes
-
-#
-# Debian
-#
-RUN set -x && \
-    # Setup a cacher to speed up build
-    if [ -n "${APT_CACHER}" ] ; then \
-        echo "Acquire::http::Proxy \"${APT_CACHER}\";" | tee /etc/apt/apt.conf.d/01proxy ; \
-    fi; \
-    apt-get -qq update && \
-    apt-get -qy install --no-install-recommends \
-        # for deployment
-        openssh-client \
-        rsync \
-        # for locales and utf-8 support
-        locales \
-        # latex toolchain
-        lmodern \
-        texlive \
-        texlive-lang-french \
-		texlive-lang-german \
-        texlive-luatex \
-        texlive-pstricks \
-        texlive-xetex \
-		xzdec \
-        # reveal (see issue #18)
-        netbase \
-        # fonts
-        fonts-lato \
-		fonts-liberation \
-        # build tools
-        make \
-        git \
-        parallel \
-        wget \
-        unzip \
-        # panflute requirements
-        python3-pip \
-        python3-setuptools \
-        python3-wheel \
-        python3-yaml \
-        # required for PDF meta analysis
-        poppler-utils \
-        zlibc \
-		# for emojis
-		librsvg2-bin \
-    # clean up
-    && apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /etc/apt/apt.conf.d/01proxy
-
-#
-# Set Locale for UTF-8 support
-# This is needed for panflute filters see :
-# https://github.com/dalibo/pandocker/pull/86
-#
-RUN locale-gen C.UTF-8
-ENV LANG C.UTF-8
-
-#
-# SSH pre-config / useful for Gitlab CI
-#
-RUN mkdir -p ~/.ssh && \
-    /bin/echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config # See Issue #87
+ARG cache=/opt/cache
+FROM alpine as emoji-image
 
 #
 # Add local cache/. It's empty by default so this does not change the final
@@ -84,62 +7,106 @@ RUN mkdir -p ~/.ssh && \
 #
 # However, once warmed with make warm-cache, it can save a lots of bandwidth.
 #
-ADD cache ./cache
+ARG cache
+ENV CACHE=$cache
+COPY cache/ ${CACHE}/
 
-#
-# Install pandoc from upstream. Debian package is too old.
-#
-ARG PANDOC_VERSION=2.7
-ADD scripts/fetch-pandoc.sh /usr/local/bin/
-RUN fetch-pandoc.sh ${PANDOC_VERSION} ./cache/pandoc.deb && \
-    dpkg --install ./cache/pandoc.deb && \
-    rm -f ./cache/pandoc.deb
+RUN apk add --no-cache librsvg \
+ && [[ -f ${CACHE}/twemoji.tar.gz ]] || wget https://github.com/twitter/twemoji/archive/gh-pages.tar.gz -O ${CACHE}/twemoji.tar.gz \
+ && mkdir -p /tmp/twemoji \
+ && tar --strip-components 1 -zvxf ${CACHE}/twemoji.tar.gz -C /tmp/twemoji \
+ && [[ -f ${CACHE}/xelatex-emoji.tar.gz ]] || wget https://github.com/mreq/xelatex-emoji/archive/master.tar.gz -O ${CACHE}/xelatex-emoji.tar.gz \
+ && mkdir -p /tmp/xelatex-emoji/images \
+ && tar --strip-components 1 -zvxf ${CACHE}/xelatex-emoji.tar.gz -C /tmp/xelatex-emoji \
+ && cd /tmp/twemoji/2/svg \
+ && . /tmp/xelatex-emoji/bin/convert_svgs_to_pdfs ./*.svg \
+ && mv /tmp/twemoji/2/svg/*.pdf /tmp/xelatex-emoji/images/
 
-#
-# Pandoc filters
-#
-ADD server/requirements.txt ./
-RUN pip3 --no-cache-dir install --find-links file://${PWD}/cache -r requirements.txt
+FROM python:3.7-alpine as compile-image
 
+ARG cache
+ENV CACHE=$cache \
+    PATH="/opt/venv/bin:$PATH"
+COPY cache/ ${CACHE}/
+
+WORKDIR /app
+COPY requirements/*.txt ./
+ADD dist/pandocserver-*.tar.gz ./
+
+RUN apk add --no-cache \
+            gcc \
+            g++ \
+            musl-dev \
+            libffi-dev \
+ && python3 -m venv /opt/venv
+
+RUN $(which python) -m pip install \
+        --no-cache-dir \
+        --find-links file://${CACHE} \
+        --requirement ./production.txt \
+        ./pandocserver-* \
+        --requirement ./pandoc_filters.txt \
+    && $(which python) -m pip list
+
+FROM pandoc/latex
+
+ENV LANG=C.UTF-8 \
+    APP_ROOT=/opt/app-root \
+    USER_NAME=pandoc \
+    UID=10001 \
+    GID=10001
+
+COPY --from=emoji-image /tmp/xelatex-emoji /opt/texlive/texmf-local/tex/latex/
+ENV PATH=${APP_ROOT}/bin:${PATH} \
+    HOME=${APP_ROOT}
+COPY bin/ ${APP_ROOT}/bin/
+
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main \
+        texlive \
+        texlive-luatex \
+        texlive-xetex \
+        texmf-dist-pstricks \
+        xz \
+        python3 \
+ && chmod -R u+x ${APP_ROOT}/bin \
+ && chgrp -R 0 ${APP_ROOT} \
+ && chmod -R g=u ${APP_ROOT} /etc/passwd
+
+COPY --from=compile-image /opt/venv /opt/venv
+ENV PATH=/opt/venv/bin:${PATH}
+RUN ln -s /usr/bin/python3 /usr/local/bin/python3 \
+ && python -m pip list \
+ && python -m pip install pandoc-include
 
 #
 # eisvogel template
 #
-ARG TEMPLATES_DIR=/root/.pandoc/templates
+ARG TEMPLATES_DIR=${APP_ROOT}/.pandoc/templates
 RUN mkdir -p ${TEMPLATES_DIR} && \
     wget https://raw.githubusercontent.com/Wandmalfarbe/pandoc-latex-template/master/eisvogel.tex -O ${TEMPLATES_DIR}/eisvogel.latex
-RUN tlmgr init-usertree && \
-    tlmgr install ly1 inconsolata sourcesanspro sourcecodepro mweights noto
+RUN tlmgr update --self \
+ && tlmgr init-usertree \
+ && tlmgr install \
+        ly1 \
+        inconsolata \
+        sourcesanspro \
+        sourcecodepro \
+        mweights \
+        noto \
+        needspace \
+        mdframed \
+        titling \
+        adjustbox \
+        collectbox \
+        pagecolor \
+ && texhash \
+ && rm /opt/texlive/*/texmf-var/web2c/tlmgr.log
 
-#
-# emojis support for latex
-# https://github.com/mreq/xelatex-emoji
-#
-ARG TEXMF=/usr/share/texmf/tex/latex/
-ARG EMOJI_DIR=/tmp/twemoji
-RUN git clone --single-branch --depth=1 --branch gh-pages https://github.com/twitter/twemoji.git $EMOJI_DIR && \
-	# fetch xelatex-emoji
-	mkdir -p ${TEXMF} && \
-    cd ${TEXMF} && \
-    git clone --single-branch --branch images https://github.com/daamien/xelatex-emoji.git && \
-	# convert twemoji SVG files into PDF files
-    cp -r $EMOJI_DIR/2/svg xelatex-emoji/images && \
-	cd xelatex-emoji/images && \
-	../bin/convert_svgs_to_pdfs ./*.svg && \
-	# clean up
-	rm -f *.svg && \
-	rm -fr ${EMOJI_DIR} && \
-	# update texlive
-	cd ${TEXMF} && \
-	texhash
-
-VOLUME /pandoc
-WORKDIR /pandoc
-
-RUN mkdir /app
-COPY server /app
-RUN chmod +x /app/main.py
+USER ${UID}
+WORKDIR ${APP_ROOT}
 
 EXPOSE 8080
 
-CMD ["python", "/app/main.py"]
+ENTRYPOINT [ "entrypoint", "python","-m","pandocserver"]
+VOLUME ${APP_ROOT}/logs ${APP_ROOT}/data
+CMD ["run"]
