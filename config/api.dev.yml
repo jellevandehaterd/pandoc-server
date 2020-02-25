@@ -1,0 +1,17 @@
+app:
+  host: 0.0.0.0
+  port: 8080
+
+workers:
+  max_workers: 1
+
+
+document:
+  log: /dev/stdout
+  verbose: true
+  quiet: false
+  fail_if_warnings: false
+  extra_args:
+    template: eisvogel
+    pdf_engine: xelatex
+    strip_comments: true
